@@ -1,0 +1,32 @@
+{
+  "table": "A",
+  "no": "205/A/NBP/2025",
+  "effectiveDate": "2025-10-22",
+  "rates": [
+    {
+      "currency": "euro",
+      "code": "EUR",
+      "mid": 4.2438
+    },
+    {
+      "currency": "dolar amerykański",
+      "code": "USD",
+      "mid": 3.6591
+    },
+    {
+      "currency": "funt szterling",
+      "code": "GBP",
+      "mid": 4.8746
+    },
+    {
+      "currency": "jen (Japonia)",
+      "code": "JPY",
+      "mid": 0.024123
+    },
+    {
+      "currency": "frank szwajcarski",
+      "code": "CHF",
+      "mid": 4.5963
+    }
+  ]
+}
