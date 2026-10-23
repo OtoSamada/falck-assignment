@@ -4,6 +4,7 @@ __pycache__/
 .venv/
 *.egg-info/
 dist/
+build/
 
 # Testing and tooling
 .pytest_cache/
