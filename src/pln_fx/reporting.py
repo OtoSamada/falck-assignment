@@ -163,6 +163,10 @@ def render_report(
             "## Source responses",
             "",
             "Each saved JSON file preserves the original response bytes for its inclusive request window.",
+            (
+                "Source responses may cover full months beyond the requested period. "
+                "Only publications within the requested dates are analyzed."
+            ),
             "",
         ]
     )

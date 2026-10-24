@@ -25,3 +25,6 @@ design.md
 
 # Generated reporting runs
 /outputs/
+
+# Reusable NBP source responses
+/data/raw/

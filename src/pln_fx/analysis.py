@@ -8,7 +8,7 @@ import pandas as pd
 def calculate_rate_metrics(rates: pd.DataFrame) -> pd.DataFrame:
     """Add publication changes and a base-100 index without changing the input.
 
-    Rates, including JPY, remain in PLN per one foreign currency unit.
+    Rates remain in PLN per one foreign currency unit.
     Changes compare consecutive publications; the first change is undefined.
     """
     if rates.empty:
