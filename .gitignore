@@ -22,3 +22,6 @@ htmlcov/
 # Private project instructions
 AGENTS.md
 design.md
+
+# Generated reporting runs
+/outputs/
