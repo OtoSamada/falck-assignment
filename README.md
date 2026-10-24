@@ -103,7 +103,7 @@ docker run --rm \
   -v "$PWD/data/raw:/app/data/raw" \
   -v "$PWD/outputs:/app/outputs" \
   falck-pln-fx --mode run \
-  --start-date 2021-10-23 --end-date 2026-10-22
+  --start-date 2021-10-01 --end-date 2026-10-22
 ```
 
 For offline reporting from existing data:
@@ -113,7 +113,7 @@ docker run --rm --network none \
   -v "$PWD/data/raw:/app/data/raw:ro" \
   -v "$PWD/outputs:/app/outputs" \
   falck-pln-fx --mode report \
-  --start-date 2021-10-23 --end-date 2026-10-22
+  --start-date 2021-10-01 --end-date 2026-10-22
 ```
 
 `/app/outputs/` maps to host `outputs/`. The image uses locked dependencies, headless plotting, and user ID `10001`; native Linux mounts need suitable write permissions.
