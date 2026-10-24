@@ -11,7 +11,7 @@ Install Python 3.12 and [uv](https://docs.astral.sh/uv/getting-started/installat
 ```bash
 uv sync --locked
 uv run python -m pln_fx --mode run \
-  --start-date 2021-10-23 --end-date 2026-10-22
+  --start-date 2021-10-01 --end-date 2026-10-22
 ```
 
 Missing or refreshed data requires network access. Reporting commands print the completed run's absolute path to stdout; logs and errors use stderr.
@@ -28,9 +28,9 @@ Retrieve data first, then generate a report offline:
 
 ```bash
 uv run python -m pln_fx --mode ingest \
-  --start-date 2021-10-23 --end-date 2026-10-22
+  --start-date 2021-10-01 --end-date 2026-10-22
 uv run python -m pln_fx --mode report \
-  --start-date 2021-10-23 --end-date 2026-10-22
+  --start-date 2021-10-01 --end-date 2026-10-22
 ```
 
 `--start-date` and `--end-date` are required, inclusive `YYYY-MM-DD` dates, ordered and not in the future in UTC. `--data-dir` defaults to `data/raw/`; `--output-dir` defaults to `outputs/`. Relative paths use the working directory. `--refresh` downloads every requested month again in `run` or `ingest`; `report` rejects it. Use `--help` for details.
