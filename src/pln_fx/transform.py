@@ -12,7 +12,6 @@ _TARGET_CURRENCIES = {"EUR", "USD", "GBP", "JPY"}
 def to_rates_frame(tables: list[NBPTable]) -> pd.DataFrame:
     """Return sorted target rates from validated tables, in PLN per one unit.
 
-    JPY remains PLN per 1 JPY. Preserve publication gaps and original rates.
     Reject missing target currencies and duplicate observations before filtering.
     """
     if not tables:
