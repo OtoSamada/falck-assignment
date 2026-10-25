@@ -64,6 +64,17 @@ def _load_months(
         complete = raw_directory / f"{first:%Y-%m}.json"
         pattern = re.compile(rf"{first:%Y-%m}(?:-01_({first:%Y-%m}-\d{{2}}))?\.json")
         month_paths = [path for path in paths if pattern.fullmatch(path.name)]
+        if (
+            not month_paths
+            and first == end.replace(day=1)
+            and (end - first).days < 2
+            and first.weekday() >= 5
+            and end.weekday() >= 5
+        ):
+            _LOGGER.info(
+                "Skipping absent weekend-only month prefix: %s to %s", first, end
+            )
+            continue
         coverage_end = last if last < as_of else min(last, end)
         required_end = min(last, end)
         known_dates: set[date] = set()

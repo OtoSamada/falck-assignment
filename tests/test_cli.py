@@ -3,6 +3,7 @@
 import re
 import subprocess
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import patch
 
@@ -140,6 +141,82 @@ def test_cli_publishes_complete_report_from_two_monthly_responses(
     for target in re.findall(r"\]\(([^)]+)\)", report):
         if not target.startswith("https://"):
             assert (run / target).is_file(), target
+
+
+def test_cli_terminal_weekend_replays_offline_and_fetches_when_weekday_arrives(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    raw = tmp_path / "raw"
+    outputs = tmp_path / "outputs"
+    january = (
+        BODIES[0]
+        .replace(b"2025-09-01", b"2026-01-29")
+        .replace(b"2025-09-30", b"2026-01-30")
+    )
+    february = b"""[
+{"table":"A","no":"SYNTHETIC/2026-02-02","effectiveDate":"2026-02-02",
+"rates":[{"code":"EUR","mid":4.1},{"code":"GBP","mid":5.1},
+{"code":"JPY","mid":0.025},{"code":"USD","mid":3.1}]}]\n"""
+    arguments = [
+        "--start-date",
+        "2026-01-29",
+        "--end-date",
+        "2026-02-01",
+        "--data-dir",
+        str(raw),
+        "--output-dir",
+        str(outputs),
+    ]
+    with (
+        patch("pln_fx.cli.datetime") as clock,
+        patch.object(
+            requests.Session,
+            "send",
+            autospec=True,
+            side_effect=[response(200, january), response(404, b"No data")],
+        ) as http,
+    ):
+        clock.now.return_value = datetime(2026, 2, 1, tzinfo=UTC)
+        assert main(arguments) == 0
+        first = Path(capsys.readouterr().out.strip())
+        assert [call.args[1].url for call in http.call_args_list] == [
+            "https://api.nbp.pl/api/exchangerates/tables/a/2026-01-01/2026-01-31/?format=json"
+        ]
+        assert {path.name: path.read_bytes() for path in raw.iterdir()} == {
+            "2026-01.json": january
+        }
+        rates = pd.read_csv(first / "rates.csv")
+        assert rates["date"].tolist() == ["2026-01-29", "2026-01-30"] * 4
+        assert len(pd.read_csv(first / "summary.csv")) == 16
+        assert (
+            first / "raw/table_a_2026-01-01_2026-01-31.json"
+        ).read_bytes() == january
+        report = (first / "report.md").read_text(encoding="utf-8")
+        assert "Requested period: 2026-01-29 to 2026-02-01" in report
+        assert "Actual publication coverage: 2026-01-29 to 2026-01-30" in report
+
+        http.reset_mock()
+        http.side_effect = AssertionError("Offline reporting must not request data")
+        assert main(["--mode", "report", *arguments]) == 0
+        offline = Path(capsys.readouterr().out.strip())
+        http.assert_not_called()
+        assert (offline / "rates.csv").read_bytes() == (
+            first / "rates.csv"
+        ).read_bytes()
+
+        clock.now.return_value = datetime(2026, 2, 2, tzinfo=UTC)
+        http.side_effect = [response(200, february)]
+        extended = ["2026-02-02" if arg == "2026-02-01" else arg for arg in arguments]
+        assert main(extended) == 0
+        later = Path(capsys.readouterr().out.strip())
+        assert [call.args[1].url for call in http.call_args_list] == [
+            "https://api.nbp.pl/api/exchangerates/tables/a/2026-02-01/2026-02-02/?format=json"
+        ]
+        assert (raw / "2026-02-01_2026-02-02.json").read_bytes() == february
+        assert (
+            pd.read_csv(later / "rates.csv")["date"].tolist()
+            == ["2026-01-29", "2026-01-30", "2026-02-02"] * 4
+        )
 
 
 def test_cli_ingest_updates_raw_store_without_publishing(
