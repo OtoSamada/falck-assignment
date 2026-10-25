@@ -11,7 +11,7 @@ import pytest
 import requests
 
 from pln_fx.nbp import NBPClient
-from pln_fx.raw_store import load_or_fetch_months
+from pln_fx.raw_store import load_or_fetch_months, load_stored_months
 
 
 def body(*days: str, eur: float = 4.0) -> bytes:
@@ -96,6 +96,98 @@ def test_historical_cold_warm_subset_and_extension_use_monthly_source_bytes(
         "2024-02.json": february,
         "2024-03.json": march,
         "2024-04.json": april,
+    }
+
+
+def test_empty_weekend_only_period_still_fails(tmp_path: Path) -> None:
+    day = date(2026, 2, 1)
+    with (
+        patch.object(
+            requests.Session,
+            "send",
+            autospec=True,
+            return_value=response(b"No data", 404),
+        ) as http,
+        NBPClient() as client,
+    ):
+        with pytest.raises(ValueError):
+            load_or_fetch_months(client, day, day, tmp_path, as_of=day)
+        with pytest.raises(ValueError):
+            load_stored_months(day, day, tmp_path, as_of=day)
+    http.assert_not_called()
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.parametrize(
+    ("end", "expected_window"),
+    [
+        pytest.param(
+            date(2026, 2, 8),
+            "2026-02-01/2026-02-08",
+            id="terminal-prefix-includes-weekdays",
+        ),
+        pytest.param(
+            date(2026, 3, 1),
+            "2026-02-01/2026-02-28",
+            id="missing-intermediate-month",
+        ),
+    ],
+)
+def test_required_month_404_is_not_skipped(
+    tmp_path: Path, end: date, expected_window: str
+) -> None:
+    january = body("2026-01-29", "2026-01-30")
+    (tmp_path / "2026-01.json").write_bytes(january)
+    with (
+        patch.object(
+            requests.Session,
+            "send",
+            autospec=True,
+            return_value=response(b"No data", 404),
+        ) as http,
+        NBPClient() as client,
+        pytest.raises(RuntimeError) as error,
+    ):
+        load_or_fetch_months(client, date(2026, 1, 29), end, tmp_path, as_of=end)
+    assert http.call_count == 1
+    assert http.call_args.args[1].url.endswith(f"/{expected_window}/?format=json")
+    assert isinstance(error.value.__cause__, requests.HTTPError)
+    assert error.value.__cause__.response.status_code == 404
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == {
+        "2026-01.json": january
+    }
+
+
+def test_terminal_weekend_with_stored_data_keeps_normal_refresh_rules(
+    tmp_path: Path,
+) -> None:
+    january = body("2026-01-29", "2026-01-30")
+    february = body("2026-02-02")
+    (tmp_path / "2026-01.json").write_bytes(january)
+    stored = tmp_path / "2026-02-01_2026-02-02.json"
+    stored.write_bytes(february)
+    with (
+        patch.object(
+            requests.Session,
+            "send",
+            autospec=True,
+            return_value=response(b"No data", 404),
+        ) as http,
+        NBPClient() as client,
+        pytest.raises(RuntimeError),
+    ):
+        load_or_fetch_months(
+            client,
+            date(2026, 1, 29),
+            date(2026, 2, 1),
+            tmp_path,
+            as_of=date(2026, 2, 2),
+        )
+    assert http.call_count == 1
+    assert http.call_args.args[1].url.endswith("/2026-02-01/2026-02-02/?format=json")
+    assert {path.name: path.read_bytes() for path in tmp_path.iterdir()} == {
+        "2026-01.json": january,
+        stored.name: february,
     }
 
 
