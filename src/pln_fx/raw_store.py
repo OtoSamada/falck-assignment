@@ -1,4 +1,8 @@
-"""Reusable monthly NBP source responses with exact-range selection."""
+"""Persist validated monthly NBP responses and select exact date ranges.
+
+Online loading reuses finalized months, refreshes provisional months, and keeps
+original response bytes available for offline reporting and source traceability.
+"""
 
 import logging
 import os
@@ -27,6 +31,7 @@ def _iter_months(start: date, end: date) -> Iterator[tuple[date, date]]:
 
 
 def _write_atomic(path: Path, body: bytes) -> None:
+    """Replace a response only after its temporary file is written completely."""
     temporary: Path | None = None
     try:
         with NamedTemporaryFile(
@@ -57,6 +62,13 @@ def _load_months(
     as_of: date,
     refresh: bool,
 ) -> tuple[list[NBPTable], dict[tuple[date, date], bytes]]:
+    """Load monthly responses, fetching validated replacements when permitted.
+
+    Offline loading requires valid stored coverage. Online updates reject any
+    replacement that drops a known publication date and write the replacement
+    before removing older variants. Returned tables match the requested dates,
+    while source bodies can cover broader monthly windows.
+    """
     selected: list[NBPTable] = []
     raw_by_window: dict[tuple[date, date], bytes] = {}
 
@@ -64,6 +76,7 @@ def _load_months(
         complete = raw_directory / f"{first:%Y-%m}.json"
         pattern = re.compile(rf"{first:%Y-%m}(?:-01_({first:%Y-%m}-\d{{2}}))?\.json")
         month_paths = [path for path in paths if pattern.fullmatch(path.name)]
+        # No NBP publication can exist in an absent terminal weekend-only prefix.
         if (
             not month_paths
             and first == end.replace(day=1)
@@ -95,6 +108,7 @@ def _load_months(
                 coverage_end = max(coverage_end, stored_end)
                 body = path.read_bytes()
                 tables = parse_window(body, first, stored_end)
+                # Stored bodies must also satisfy target-currency dataset rules.
                 to_rates_frame(tables)
             except ValueError as exc:
                 if client is None:
@@ -130,6 +144,7 @@ def _load_months(
                 )
             coverage_end = stored_end
             _LOGGER.info("Loaded stored NBP response: %s", target)
+        # Reuse a final file only when it contains all dates seen in stored variants.
         elif (
             stored_complete is not None
             and last < as_of
@@ -145,6 +160,7 @@ def _load_months(
             _LOGGER.info("Downloading NBP data for %s to %s", first, coverage_end)
             tables, evidence = client.fetch_tables(first, coverage_end)
             to_rates_frame(tables)
+            # Corrections may change values but must not remove known publications.
             missing = known_dates - {table.effective_date for table in tables}
             if missing:
                 raise ValueError(
