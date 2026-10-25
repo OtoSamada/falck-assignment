@@ -2,7 +2,7 @@
 
 Falck take-home assignment analyzing five years of EUR, USD, GBP, and JPY exchange rates against the Polish zloty (PLN), using published averages from the [National Bank of Poland (NBP) Table A API](https://api.nbp.pl/en.html).
 
-For each currency, it reports historical minimum and maximum rates and largest daily depreciation and appreciation. Deliverables include CSVs, two charts, Markdown findings, and source responses. Examples use October 23, 2021 to October 22, 2026, inclusive.
+For each currency, it reports historical minimum and maximum rates and largest daily depreciation and appreciation. Deliverables include CSVs, two charts, Markdown findings, and source responses. Examples use October 1, 2021 to October 22, 2026, inclusive.
 
 ## Quick start
 
